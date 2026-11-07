@@ -86,12 +86,25 @@ button.sub:disabled,button.main:disabled{opacity:.45;cursor:default}
 @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
 @keyframes up{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
 @keyframes stamp{0%{transform:scale(2.2) rotate(-18deg);opacity:0}60%{transform:scale(.92) rotate(-12deg);opacity:1}100%{transform:scale(1) rotate(-12deg)}}
+.msg:empty{min-height:0;margin-top:-14px}
+#hintbox:empty{display:none}
+.score{text-align:center;margin:0;font-weight:700;color:var(--ink2)}
+.score b{font-size:1.25rem;color:var(--ink)}
+.agrp .cnt{font-weight:700;color:var(--ink2);margin-left:.4rem;font-size:.85em}
 .msg{min-height:1.6rem;text-align:center;font-weight:700;font-size:.95rem;margin:0}
 .msg.bad{color:var(--shu2)}
 .verdict{position:relative;overflow:hidden;background:var(--paper);border:2px solid var(--ok);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 0 #1d2b2620;animation:up .35s ease-out}
 .verdict .hd{display:flex;align-items:center;gap:10px;font-size:1.25rem;font-weight:900;flex-wrap:wrap;padding-right:4.4rem}
 .verdict .why{font-size:.95rem;line-height:1.75;margin:0;text-align:left}
 .verdict .why b{color:var(--ok2)}
+.poll{background:var(--sky);border-radius:10px;padding:.5rem .7rem;display:flex;flex-direction:column;gap:4px}
+.poll .pl{margin:0;font-size:.85rem;line-height:1.6}
+.poll .pr{display:grid;grid-template-columns:2.6rem 1fr 3.4rem;align-items:center;gap:6px;font-size:.85rem;font-weight:700}
+.poll .pr b{text-align:right;font-variant-numeric:tabular-nums}
+.poll .bar{display:block;height:12px;border-radius:6px;background:var(--paper);border:1.5px solid var(--line);overflow:hidden}
+.poll .bar i{display:block;height:100%;background:var(--ok);transform-origin:left;animation:grow .6s ease-out}
+.poll .bar.o i{background:repeating-linear-gradient(135deg,var(--ink2) 0 4px,transparent 4px 7px)}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .verdict .te{font-size:.85rem;line-height:1.6;margin:0;padding:.45rem .6rem;border-radius:10px;background:var(--sky);text-align:left}
 .verdict .te b{color:var(--mo2)}
 .seal{position:absolute;right:12px;top:10px;width:3.6rem;height:3.6rem;border-radius:50%;border:3px solid var(--shu);color:var(--shu);display:grid;place-items:center;font-weight:900;font-size:.72rem;line-height:1.1;text-align:center;transform:rotate(-12deg);animation:stamp .45s ease-out;background:#fff8}
@@ -612,7 +625,7 @@ const cutOf = () => { if (cur.hints < 2) return []; const left = cur.P.opts.map(
 function paint() {
   const cut = cutOf();
   document.querySelectorAll(".ch").forEach((b) => { const j = +b.dataset.j, ng = cur.wrong.includes(j) || cut.includes(j); b.classList.toggle("ng", ng); b.disabled = ng || cur.done; b.setAttribute("aria-label", cur.P.opts[j] + (ng ? "（ちがう）" : "")); });
-  const h = $("hint"); if (h) h.disabled = cur.done || cur.hints >= hmax();
+  const h = $("hint"); if (h) { h.disabled = cur.done || cur.hints >= hmax(); h.hidden = cur.done; } // 答えたあとは押せないボタンを出さない
   $("hintbox").innerHTML = cur.hints && !cur.done ? `<div class="hint" role="status">💡 ${esc(cur.P.look)}${cur.hints >= 2 ? "<br>💡 ちがう選び肢を1つ消しました。" : ""}</div>` : "";
 }
 function hint() { if (cur.done || cur.hints >= hmax()) return; if (!same(load().runs[MODE])) { toast("別の画面で先に進んでいます"); return play(); } cur.hints++; keep(); paint(); }
@@ -644,13 +657,16 @@ function choose(j) {
   });
   const st = starsOf(m), r = s.runs[MODE], fin = r && r.mode !== "e" && r.res.length >= r.list.length;
   document.querySelectorAll(".ch").forEach((b) => { b.disabled = true; if (+b.dataset.j === P.ans) { b.classList.add("ok"); b.setAttribute("aria-label", P.opts[P.ans] + "（正解）"); } });
-  if ($("hint")) $("hint").disabled = true;
+  if ($("hint")) { $("hint").disabled = true; $("hint").hidden = true; }
   $("hintbox").innerHTML = ""; $("msg").className = "msg"; $("msg").textContent = "";
   const te = P.te ? G.BYTE[P.te] : null;
   $("after").innerHTML = `<div class="verdict" role="status">
     <span class="seal" aria-hidden="true">本<br>来</span>
     <div class="hd">✓ 正解！ ${starStr(st)}</div>
     <p class="why"><b>解説：</b>${esc(P.why)}</p>
+    ${te && Number.isFinite(te.r) ? `<div class="poll" id="poll"><p class="pl">本来の${te.k === "f" ? "言い方" : "意味"}を選んだ人は<b>10人に約${Math.max(1, Math.round(te.r / 10))}人</b></p>
+      <div class="pr"><span>本来</span><i class="bar"><i style="width:${te.r}%"></i></i><b>${te.r}%</b></div>
+      <div class="pr"><span>ほか</span><i class="bar o"><i style="width:${te.wr}%"></i></i><b>${te.wr}%</b></div></div>` : ""}
     ${te ? `<p class="te"><b>${te.icon} ${esc(te.name)}</b>：${esc(te.lead)}</p>` : ""}
     <button class="main ok" id="next">${fin ? "結果を見る" : "次の問題へ"}</button></div>`;
   $("next").onclick = play;
@@ -708,6 +724,7 @@ function result(mode, k, first, prec, newAch = []) {
   app.innerHTML = `
     <header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>ことばの本来<small>${mode === "d" ? `今日の5問 第${dayNo(k)}回` : late ? `第${dayNo(k)}回 あとから` : mode === "h" ? "上級" : "練習"}</small></h1></header>
     <p class="big">${total === 0 ? "全問正解！" : `${list.length}問 答えました`}</p>
+    <p class="score" id="score">星 <b>${rec.m.reduce((a, m) => a + starsOf(m), 0)}</b> / ${rec.m.length * 3}　・　一度で正解 <b>${rec.m.filter((m) => m === 0).length}</b> / ${rec.m.length}</p>
     ${newAch.length ? `<p class="achnew" id="achnew">${newAch.map((id) => `🏅 実績：${ACH.find((a) => a[0] === id)[1]}`).join("<br>")}</p>` : ""}
     ${(() => { const nx = nextAch(s); return nx ? `<p class="achnext" id="achnext">🎯 あと${nx.left}${nx.unit}で「${nx.name}」</p>` : ""; })()}
     <p class="agrp">今日覚えたこと</p>

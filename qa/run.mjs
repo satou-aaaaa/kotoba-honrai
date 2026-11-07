@@ -190,11 +190,15 @@ try {
   check("ヒント2はまちがいの選び肢を1つ消す・ヒントは2回まで", await p.locator(".ch.ng").count() === 1 && await p.locator("#hint:disabled").count() === 1);
   await solve(p);
   check("ヒント2回は★1", (await p.getAttribute(".verdict .stars", "aria-label")) === "星1つ");
+  { const te = await p.evaluate(() => __mb.G.BYTE[__mb.cur().P.te]); const pt = await p.textContent("#poll");
+    check("正解の解説に、文化庁の調査の割合を棒と数字で出す（10人に約何人・本来とほかの2本）", pt.includes("10人に約") && pt.includes(te.r + "%") && pt.includes(te.wr + "%") && await p.locator("#poll .pr").count() === 2, pt); }
+  check("答えたあとは、押せないヒントのボタンを隠し、空いた知らせの欄も場所を取らない", await p.locator("#hint").isHidden() && await p.locator("#hintbox").isHidden() && (await p.$eval("#msg", (e) => e.getBoundingClientRect().height)) === 0);
   await p.click("#next");
   await solve(p); await p.click("#next");
   await p.waitForTimeout(150);
   const s1 = await mem(p);
   check("5問で結果：今日の記録に1問ごとのまちがい（1・0・0・2・0）", JSON.stringify(s1.days[TODAY]?.m) === "[1,0,0,2,0]");
+  check("結果に星の合計（12/15）と一度で正解した数（3/5）を出す", /星 12 \/ 15/.test(await p.textContent("#score")) && /一度で正解 3 \/ 5/.test(await p.textContent("#score")), await p.textContent("#score"));
   check("今日の記録に解いた問題の札も残す（あとで言葉が増えても結果に元の問題を出す）", JSON.stringify(s1.days[TODAY]?.l) === JSON.stringify(tags));
   const share = await p.textContent(".share");
   check("シェアの文に言葉・答えを出さない（印だけ）", /第\d+回/.test(share) && /🟢/.test(share) && !G.TE.some((t) => share.includes(t.name) || share.includes(t.lead)) && !/%/.test(share), share);
