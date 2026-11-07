@@ -253,12 +253,19 @@ try {
   {
     // 記録の形を直す：数の所の文字・壊れた途中経過・札を HTML として出さない
     const q = await newPage(); await closeHow(q);
-    await q.evaluate(() => { const s = JSON.parse(localStorage.getItem("honrai-v1")) || { v: 1 }; s.ebest = '<img id="xss" src=x>'; s.co = "x"; s.dex = { yakubusoku: '"><b id="xss2">', zzz: 3 }; s.miss = ['"><i id="xss3">', "a:yakubusoku"]; s.runs = { e: { mode: "e", id: "x", date: "2026-11-07", list: ['<b id="xss4">'], res: [] }, h: { list: "bad", res: [] }, d: { mode: "d", id: "z", date: "x", list: ["a:yakubusoku"], res: [] }, p: { mode: "p", id: "y", date: "2026-11-07", list: ["a:yakubusoku", "j:kanhatsu"], res: [{ m: 0 }], cur: { i: 1, tag: "j:kanhatsu", wrong: "x", hints: 0 } } }; s.days = { "2026-11-07": { m: "x" }, bad: { m: [0] }, "2026-02-30": { m: [0] } }; localStorage.setItem("honrai-v1", JSON.stringify(s)); });
+    await q.evaluate(() => { const s = JSON.parse(localStorage.getItem("honrai-v1")) || { v: 1 }; s.ebest = '<img id="xss" src=x>'; s.co = "x"; s.dex = { yakubusoku: '"><b id="xss2">', zzz: 3, "Bad Key": 1 }; s.miss = ['"><i id="xss3">', "a:yakubusoku"]; s.runs = { e: { mode: "e", id: "x", date: "2026-11-07", list: ['<b id="xss4">'], res: [] }, h: { list: "bad", res: [] }, d: { mode: "d", id: "z", date: "x", list: ["a:yakubusoku"], res: [] }, p: { mode: "p", id: "y", date: "2026-11-07", list: ["a:yakubusoku", "j:kanhatsu"], res: [{ m: 0 }], cur: { i: 1, tag: "j:kanhatsu", wrong: "x", hints: 0 } } }; s.days = { "2026-11-07": { m: "x" }, bad: { m: [0] }, "2026-02-30": { m: [0] } }; localStorage.setItem("honrai-v1", JSON.stringify(s)); });
     await q.reload(); await q.waitForTimeout(250);
     const st = await q.evaluate(() => __mb.load());
-    check("記録の形を直す：数の所の文字は0に・知らない言葉と壊れた途中経過・日ごとの記録は捨てる", st.ebest === 0 && st.co === 0 && st.dex.yakubusoku === 0 && !("zzz" in st.dex) && JSON.stringify(st.miss) === '["a:yakubusoku"]' && !("e" in st.runs) && !("h" in st.runs) && !("d" in st.runs) && st.runs.p && st.runs.p.cur === null && Object.keys(st.days).length === 0);
+    check("記録の形を直す：数の所の文字は0に・形のちがう id と壊れた途中経過・日ごとの記録は捨てる（新しい版の形の正しい id は残す）", st.ebest === 0 && st.co === 0 && st.dex.yakubusoku === 0 && st.dex.zzz === 3 && !("Bad Key" in st.dex) && JSON.stringify(st.miss) === '["a:yakubusoku"]' && !("e" in st.runs) && !("h" in st.runs) && !("d" in st.runs) && st.runs.p && st.runs.p.cur === null && Object.keys(st.days).length === 0);
     await q.click("#go-dex").catch(() => {}); await q.waitForTimeout(150);
     check("記録の文字を HTML として出さない", await q.locator("#xss, #xss2, #xss3, #xss4").count() === 0);
+    // 新しい版で足した言葉の札が入った日の記録も、古い版では消さずに残し、結果はその日の問題で出す
+    const dN = dayBefore(2), lN = [...G.dailyTags(dN).slice(0, 4), "a:mirai-kotoba"];
+    await q.evaluate(([d, l]) => { const s = __mb.load(); s.days[d] = { m: [0, 0, 0, 0, 0], l }; s.dex["mirai-kotoba"] = 2; localStorage.setItem(__mb.KEY, JSON.stringify(s)); }, [dN, lN]);
+    await q.reload(); await q.waitForTimeout(200);
+    const stN = await q.evaluate(() => __mb.load());
+    await q.evaluate((d) => __mb.result("d", d), dN); await q.waitForTimeout(100);
+    check("新しい版の言葉の札がある日の記録・言葉帳の数を、古い版でも消さない（結果はその日の問題で出す）", JSON.stringify(stN.days[dN]?.l) === JSON.stringify(lN) && stN.dex["mirai-kotoba"] === 2 && await q.locator(".rlist > div").count() === 5);
     await q.context().close();
   }
   {
